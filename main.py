@@ -5,31 +5,56 @@ db = DataStore()
 while True:
     command = input("MyRedis > ").strip()
 
-    parts = command.split()
-
-    if not parts:
+    if not command:
         continue
 
+    parts = command.split()
     cmd = parts[0].upper()
 
-    if cmd == "SET":
-        print(db.set(parts[1], parts[2]))
+    try:
+        if cmd == "SET":
+            if len(parts) != 3:
+                print("Usage: SET key value")
+                continue
 
-    elif cmd == "GET":
-        print(db.get(parts[1]))
+            print(db.set(parts[1], parts[2]))
 
-    elif cmd == "DEL":
-        print(db.delete(parts[1]))
+        elif cmd == "GET":
+            if len(parts) != 2:
+                print("Usage: GET key")
+                continue
 
-    elif cmd == "KEYS":
-        print(db.keys())
+            print(db.get(parts[1]))
 
-    elif cmd == "EXISTS":
-        print(db.exists(parts[1]))
+        elif cmd == "DEL":
+            if len(parts) != 2:
+                print("Usage: DEL key")
+                continue
 
-    elif cmd == "EXIT":
-        print("Bye!")
-        break
+            print(db.delete(parts[1]))
 
-    else:
-        print("Unknown Command")
+        elif cmd == "KEYS":
+            print(db.keys())
+
+        elif cmd == "EXISTS":
+            if len(parts) != 2:
+                print("Usage: EXISTS key")
+                continue
+
+            print(db.exists(parts[1]))
+
+        elif cmd == "PING":
+            print(db.ping())
+
+        elif cmd == "INFO":
+            print(db.info())
+
+        elif cmd == "EXIT":
+            print("Bye!")
+            break
+
+        else:
+            print("Unknown Command")
+
+    except Exception as e:
+        print(f"Error: {e}")
