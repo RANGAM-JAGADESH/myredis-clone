@@ -1,6 +1,7 @@
+from persistence import save_data, load_data
 class DataStore:
     def __init__(self):
-        self.store = {}
+        self.store = load_data()
         self.command_count = 0
 
     def increment_commands(self):
@@ -9,6 +10,7 @@ class DataStore:
     def set(self, key, value):
         self.increment_commands()
         self.store[key] = value
+        save_data(self.store)
         return "OK"
 
     def get(self, key):
@@ -20,6 +22,7 @@ class DataStore:
 
         if key in self.store:
             del self.store[key]
+            save_data(self.store)
             return 1
         return 0
 
