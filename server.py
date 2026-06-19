@@ -54,6 +54,19 @@ while True:
 
             elif cmd == "INFO":
                 response = str(db.info())
+                
+            elif cmd == "EXPIRE" and len(parts) == 3:
+                response = str(
+                    db.expire(
+                        parts[1],
+                        int(parts[2])
+                    )
+                )
+                
+            elif cmd == "TTL" and len(parts) == 2:
+                response = str(
+                    db.ttl(parts[1])
+                )
 
             else:
                 response = "Invalid Command"

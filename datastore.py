@@ -1,7 +1,9 @@
 from persistence import save_data, load_data
+import time
 class DataStore:
     def __init__(self):
         self.store = load_data()
+        self.expiry = {}
         self.command_count = 0
 
     def increment_commands(self):
@@ -15,6 +17,9 @@ class DataStore:
 
     def get(self, key):
         self.increment_commands()
+
+        self.check_expiry(key)
+
         return self.store.get(key, "(nil)")
 
     def delete(self, key):
@@ -45,3 +50,39 @@ class DataStore:
             "keys": len(self.store),
             "commands_executed": self.command_count
         }
+    
+    def expire(self, key, seconds):
+        self.increment_commands()
+
+        if key not in self.store:
+            return 0
+
+        self.expiry[key] = time.time() + seconds
+
+        return 1
+    
+
+    def check_expiry(self, key):
+        if key in self.expiry:
+
+            if time.time() > self.expiry[key]:
+
+                del self.store[key]
+                del self.expiry[key]
+
+                save_data(self.store)
+
+                return True
+
+        return False
+    
+    
+    def ttl(self, key):
+        self.increment_commands()
+
+        self.check_expiry(key)
+
+        if key not in self.expiry:
+            return -1
+
+        return int(self.expiry[key] - time.time())
