@@ -70,7 +70,9 @@ while True:
 
             else:
                 response = "Invalid Command"
+        if response is None:
+            response = "Internal Server Error"
 
-        client_socket.send(response.encode())
+        client_socket.send(str(response).encode())
 
     client_socket.close()

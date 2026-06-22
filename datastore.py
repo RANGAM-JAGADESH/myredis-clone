@@ -1,9 +1,11 @@
 from persistence import save_data, load_data
 import time
+from collections import OrderedDict
 class DataStore:
     def __init__(self):
-        self.store = load_data()
+        self.store = OrderedDict(load_data())
         self.expiry = {}
+        self.max_keys = 3
         self.command_count = 0
 
     def increment_commands(self):
@@ -12,15 +14,21 @@ class DataStore:
     def set(self, key, value):
         self.increment_commands()
         self.store[key] = value
-        save_data(self.store)
+
+        self.store.move_to_end(key)
+
+        self.enforce_lru()
+
+        save_data(dict(self.store))
         return "OK"
-
     def get(self, key):
-        self.increment_commands()
+        if key in self.store:
 
-        self.check_expiry(key)
+            self.store.move_to_end(key)
 
-        return self.store.get(key, "(nil)")
+            return self.store[key]
+
+        return "(nil)"
 
     def delete(self, key):
         self.increment_commands()
@@ -48,7 +56,8 @@ class DataStore:
 
         return {
             "keys": len(self.store),
-            "commands_executed": self.command_count
+            "commands_executed": self.command_count,
+            "max_keys": self.max_keys
         }
     
     def expire(self, key, seconds):
@@ -86,3 +95,17 @@ class DataStore:
             return -1
 
         return int(self.expiry[key] - time.time())
+    
+    
+    def enforce_lru(self):
+
+        while len(self.store) > self.max_keys:
+
+            oldest_key = next(iter(self.store))
+
+            del self.store[oldest_key]
+
+            if oldest_key in self.expiry:
+                del self.expiry[oldest_key]
+
+            save_data(dict(self.store))
