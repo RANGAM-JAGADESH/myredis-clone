@@ -7,9 +7,25 @@ class DataStore:
         self.expiry = {}
         self.max_keys = 3
         self.command_count = 0
+        
+
+        self.start_time = time.time()
+
+        # Dashboard compatibility
+        self.data = self.store
+        self.ttl_map = self.expiry
+        self.capacity = self.max_keys
+
+        # Metrics
+        self.hit_count = 0
+        self.miss_count = 0
+        self.eviction_count = 0
+        self.connected_clients = 0
+        self.request_count = 0
 
     def increment_commands(self):
         self.command_count += 1
+        self.request_count += 1
 
     def set(self, key, value):
         self.increment_commands()
@@ -21,14 +37,24 @@ class DataStore:
 
         save_data(dict(self.store))
         return "OK"
+    
     def get(self, key):
+
+        self.increment_commands()
+
+        self.check_expiry(key)
+
         if key in self.store:
+
+            self.hit_count += 1
 
             self.store.move_to_end(key)
 
             return self.store[key]
 
-        return "(nil)"
+        self.miss_count += 1
+
+        return None
 
     def delete(self, key):
         self.increment_commands()
@@ -52,14 +78,19 @@ class DataStore:
         return "PONG"
 
     def info(self):
+
         self.increment_commands()
+
+        self.cleanup_expired()
 
         return {
             "keys": len(self.store),
             "commands_executed": self.command_count,
-            "max_keys": self.max_keys
+            "max_keys": self.max_keys,
+            "ttl_keys": len(self.expiry),
+            "cache_usage": len(self.store)
         }
-    
+        
     def expire(self, key, seconds):
         self.increment_commands()
 
@@ -72,19 +103,37 @@ class DataStore:
     
 
     def check_expiry(self, key):
+
         if key in self.expiry:
 
             if time.time() > self.expiry[key]:
 
-                del self.store[key]
+                if key in self.store:
+                    del self.store[key]
+
                 del self.expiry[key]
 
-                save_data(self.store)
+                save_data(dict(self.store))
 
                 return True
 
         return False
-    
+    def cleanup_expired(self):
+
+        expired = []
+
+        for key in self.expiry:
+
+            if time.time() > self.expiry[key]:
+
+                expired.append(key)
+
+        for key in expired:
+
+            if key in self.store:
+                del self.store[key]
+
+            del self.expiry[key]
     
     def ttl(self, key):
         self.increment_commands()
@@ -100,6 +149,9 @@ class DataStore:
     def enforce_lru(self):
 
         while len(self.store) > self.max_keys:
+
+            # Dashboard Metric
+            self.eviction_count += 1
 
             oldest_key = next(iter(self.store))
 
