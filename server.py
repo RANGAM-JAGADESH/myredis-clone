@@ -1,28 +1,18 @@
 import socket
 import threading
 from metrics import metrics_manager
-from datastore import DataStore
-from pubsub import PubSub
+from shared import db, pubsub
 import time
+from shared import db, pubsub, replication_manager
 
 HOST = "127.0.0.1"
 PORT = 6379
 
-db = DataStore()
+
 
 store = db
 
-pubsub = PubSub()
 
-class ReplicationManager:
-
-    def __init__(self):
-
-        self.master_status = "online"
-        self.replica_status = "online"
-        self.lag_ms = 0
-
-replication_manager = ReplicationManager()
 
 server = socket.socket(
     socket.AF_INET,
