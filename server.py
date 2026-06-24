@@ -1,8 +1,9 @@
 import socket
 import threading
-
+from metrics import metrics_manager
 from datastore import DataStore
 from pubsub import PubSub
+import time
 
 HOST = "127.0.0.1"
 PORT = 6379
@@ -79,14 +80,27 @@ def replicate_to_replica(command):
         replication_manager.replica_status = "online"
         replication_manager.lag_ms = 0
 
+        metrics_manager.update({
+            "replica_status": "online",
+            "master_status": "online",
+            "replication_lag_ms": 0
+        })
+
+        metrics_manager.save()
+
     except Exception as e:
 
         replication_manager.replica_status = "offline"
 
+        metrics_manager.update({
+            "replica_status": "offline"
+        })
+
+        metrics_manager.save()
+
         print(
             f"Replication Error: {e}"
         )
-
 
 def handle_client(client_socket, address):
 
@@ -190,16 +204,41 @@ def handle_client(client_socket, address):
 
             break
     db.connected_clients -= 1
+
+    metrics_manager.update({
+        "connected_clients":
+            db.connected_clients
+    })
+
+    metrics_manager.save()
     client_socket.close()
 
     print(f"Disconnected: {address}")
+def metrics_updater():
 
+    while True:
+
+        metrics_manager.save()
+
+        time.sleep(2)
+
+threading.Thread(
+    target=metrics_updater,
+    daemon=True
+).start()
 
 while True:
 
     client_socket, address = server.accept()
 
     db.connected_clients += 1
+
+    metrics_manager.update({
+        "connected_clients":
+            db.connected_clients
+    })
+
+    metrics_manager.save()
 
     print(f"Connected: {address}")
 
@@ -209,3 +248,4 @@ while True:
     )
 
     thread.start()
+    

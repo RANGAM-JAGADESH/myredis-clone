@@ -1,6 +1,8 @@
 from persistence import save_data, load_data
 import time
+import os
 from collections import OrderedDict
+from metrics import metrics_manager
 class DataStore:
     def __init__(self):
         self.store = OrderedDict(load_data())
@@ -27,8 +29,17 @@ class DataStore:
         self.command_count += 1
         self.request_count += 1
 
+        metrics_manager.update({
+            "commands_executed": self.command_count,
+            "total_requests": self.request_count
+        })
+
+        metrics_manager.save()
+
     def set(self, key, value):
+
         self.increment_commands()
+
         self.store[key] = value
 
         self.store.move_to_end(key)
@@ -36,6 +47,24 @@ class DataStore:
         self.enforce_lru()
 
         save_data(dict(self.store))
+
+        
+
+        metrics_manager.update({
+            "total_keys": len(self.store),
+            "cache_usage": len(self.store),
+
+            # Persistence metrics
+            "dump_json_status": "ok" if os.path.exists("dump.json") else "missing",
+            "last_save_time": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "dump_size_kb": round(
+                os.path.getsize("dump.json") / 1024,
+                2
+            ) if os.path.exists("dump.json") else 0
+        })
+
+        metrics_manager.save()
+
         return "OK"
     
     def get(self, key):
@@ -48,21 +77,47 @@ class DataStore:
 
             self.hit_count += 1
 
+            metrics_manager.update({
+                "cache_hit_count": self.hit_count,
+                "cache_miss_count": self.miss_count
+            })
+
+            metrics_manager.save()
+
             self.store.move_to_end(key)
 
             return self.store[key]
 
         self.miss_count += 1
 
+        metrics_manager.update({
+            "cache_hit_count": self.hit_count,
+            "cache_miss_count": self.miss_count
+        })
+
+        metrics_manager.save()
+
         return None
 
     def delete(self, key):
+
         self.increment_commands()
 
         if key in self.store:
+
             del self.store[key]
-            save_data(self.store)
+
+            save_data(dict(self.store))
+
+            metrics_manager.update({
+                "total_keys": len(self.store),
+                "cache_usage": len(self.store)
+            })
+
+            metrics_manager.save()
+
             return 1
+
         return 0
 
     def keys(self):
@@ -82,6 +137,15 @@ class DataStore:
         self.increment_commands()
 
         self.cleanup_expired()
+
+        metrics_manager.update({
+            "total_keys": len(self.store),
+            "ttl_keys": len(self.expiry),
+            "cache_usage": len(self.store),
+            "max_cache_size": self.max_keys
+        })
+
+        metrics_manager.save()
 
         return {
             "keys": len(self.store),
@@ -122,7 +186,7 @@ class DataStore:
 
         expired = []
 
-        for key in self.expiry:
+        for key in list(self.expiry.keys()):
 
             if time.time() > self.expiry[key]:
 

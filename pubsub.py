@@ -1,3 +1,4 @@
+from metrics import metrics_manager
 class PubSub:
 
     def __init__(self):
@@ -13,12 +14,31 @@ class PubSub:
 
         self.channels[channel].append(client_socket)
 
+        metrics_manager.update({
+            "total_channels": len(self.channels),
+            "active_subscribers":
+                sum(len(x) for x in self.channels.values())
+        })
+
+        metrics_manager.save()
+
         return f"Subscribed to {channel}"
 
     def publish(self, channel, message):
+
         self.message_count += 1
 
         if channel not in self.channels:
+
+            metrics_manager.update({
+                "messages_published": self.message_count,
+                "total_channels": len(self.channels),
+                "active_subscribers":
+                    sum(len(x) for x in self.channels.values())
+            })
+
+            metrics_manager.save()
+
             return 0
 
         subscribers = self.channels[channel]
@@ -33,5 +53,14 @@ class PubSub:
 
             except:
                 pass
+
+        metrics_manager.update({
+            "messages_published": self.message_count,
+            "total_channels": len(self.channels),
+            "active_subscribers":
+                sum(len(x) for x in self.channels.values())
+        })
+
+        metrics_manager.save()
 
         return len(subscribers)
