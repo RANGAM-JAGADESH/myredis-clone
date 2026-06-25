@@ -3,15 +3,14 @@ import threading
 from metrics import metrics_manager
 from health_checker import monitor  
 import time
-from shared import db, pubsub, replication_manager
+# from shared import db, pubsub, replication_manager
 from shard_router import send_to_shard
-
-
 from shared import (
     db,
     pubsub,
     replication_manager,
-    transaction_manager
+    transaction_manager,
+    watch_manager
 )
 HOST = "127.0.0.1"
 PORT = 6379
@@ -146,6 +145,10 @@ def handle_client(client_socket, address):
 
                     replicate_to_replica(command)
 
+                    watch_manager.touch(
+                        parts[1]
+                    )
+
                 elif cmd == "GET" and len(parts) == 2:
 
                     response = send_to_shard(
@@ -225,15 +228,37 @@ def handle_client(client_socket, address):
 
                 elif cmd == "EXEC":
 
-                    response = transaction_manager.execute(
-                        db
-                    )
+                    if not watch_manager.validate():
+
+                        response = (
+                            "Transaction Aborted"
+                        )
+
+                    else:
+
+                        response = (
+                            transaction_manager.execute(
+                                db
+                            )
+                        )
+
+                    watch_manager.clear()
 
 
                 elif cmd == "DISCARD":
 
                     response = transaction_manager.discard()
+                    
+                elif cmd == "WATCH" and len(parts) == 2:
 
+                    response = watch_manager.watch(
+                        parts[1]
+                    )
+                elif cmd == "UNWATCH":
+
+                    watch_manager.clear()
+
+                    response = "OK"
 
                 else:
                     response = "Invalid Command"

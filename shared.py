@@ -1,8 +1,11 @@
 from datastore import DataStore
 from pubsub import PubSub
 from transaction import TransactionManager
-
+from watch_manager import WatchManager
 transaction_manager = TransactionManager()
+
+
+watch_manager = WatchManager()
 db = DataStore()
 pubsub = PubSub()
 
