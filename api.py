@@ -3,7 +3,7 @@ from shared import db, pubsub
 from metrics import load_metrics
 from pydantic import BaseModel
 from shared import db, pubsub, replication_manager
-
+from cluster import cluster_info
 import shutil
 class KeyValue(BaseModel):
     key: str
@@ -262,3 +262,9 @@ def view_aof():
             "commands":
                 f.readlines()
         }
+        
+        
+@app.get("/cluster")
+def cluster():
+
+    return cluster_info()

@@ -4,7 +4,7 @@ from metrics import metrics_manager
 from health_checker import monitor  
 import time
 from shared import db, pubsub, replication_manager
-
+from shard_router import send_to_shard
 HOST = "127.0.0.1"
 PORT = 6379
 replica_status = {
@@ -131,17 +131,19 @@ def handle_client(client_socket, address):
 
                 elif cmd == "SET" and len(parts) == 3:
 
-                    response = db.set(
-                        parts[1],
-                        parts[2]
+                    response = send_to_shard(
+                        command,
+                        parts[1]
                     )
 
-                    replicate_to_replica(
-                        command
-                    )
+                    replicate_to_replica(command)
 
                 elif cmd == "GET" and len(parts) == 2:
-                    response = db.get(parts[1])
+
+                    response = send_to_shard(
+                        command,
+                        parts[1]
+                    )
 
                 elif cmd == "DEL" and len(parts) == 2:
                     response = str(db.delete(parts[1]))
