@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from shared import db, pubsub, replication_manager
 from cluster import cluster_info
 import shutil
+from rebalancer import rebalance
 class KeyValue(BaseModel):
     key: str
     value: str
@@ -268,3 +269,12 @@ def view_aof():
 def cluster():
 
     return cluster_info()
+
+@app.get("/rebalance")
+def cluster_rebalance():
+
+    return {
+        "movement": rebalance(
+            db.store
+        )
+    }
