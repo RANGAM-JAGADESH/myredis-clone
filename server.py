@@ -50,47 +50,49 @@ print(f"MyRedis Server running on {HOST}:{PORT}")
 # print(f"MyRedis Server running on {HOST}:{PORT}")
 def replicate_to_replica(command):
 
-    try:
+    replicas = [
+        6380,
+        6381,
+        6382
+    ]
 
-        replica_socket = socket.socket(
-            socket.AF_INET,
-            socket.SOCK_STREAM
-        )
+    online_replicas = 0
 
-        replica_socket.connect(
-            ("127.0.0.1", 6380)
-        )
+    for port in replicas:
 
-        replica_socket.send(
-            command.encode()
-        )
+        try:
 
-        replica_socket.close()
+            replica_socket = socket.socket(
+                socket.AF_INET,
+                socket.SOCK_STREAM
+            )
 
-        replication_manager.replica_status = "online"
-        replication_manager.lag_ms = 0
+            replica_socket.connect(
+                ("127.0.0.1", port)
+            )
 
-        metrics_manager.update({
-            "replica_status": "online",
-            "master_status": "online",
-            "replication_lag_ms": 0
-        })
+            replica_socket.send(
+                command.encode()
+            )
 
-        metrics_manager.save()
+            replica_socket.close()
 
-    except Exception as e:
+            online_replicas += 1
 
-        replication_manager.replica_status = "offline"
+        except Exception as e:
 
-        metrics_manager.update({
-            "replica_status": "offline"
-        })
+            print(
+                f"Replica {port} Error: {e}"
+            )
 
-        metrics_manager.save()
+    metrics_manager.update({
+        "master_status": "online",
+        "replica_status":
+            f"{online_replicas}/3 online",
+        "replication_lag_ms": 0
+    })
 
-        print(
-            f"Replication Error: {e}"
-        )
+    metrics_manager.save()
 
 def handle_client(client_socket, address):
 
