@@ -1,11 +1,11 @@
 {
   "total_keys": 2,
-  "commands_executed": 2,
+  "commands_executed": 1,
   "ttl_keys": 0,
   "cache_usage": 2,
   "max_cache_size": 128,
   "connected_clients": 1,
-  "total_requests": 2,
+  "total_requests": 1,
   "cache_hit_count": 1,
   "cache_miss_count": 1,
   "cache_hit_rate": 50.0,
@@ -17,9 +17,12 @@
   "replica_status": "2/3 online",
   "replication_lag_ms": 0,
   "dump_json_status": "ok",
-  "last_save_time": "2026-06-25 11:00:06",
+  "last_save_time": "2026-06-25 11:11:34",
   "dump_size_kb": 0.03,
-  "uptime_seconds": 100,
-  "timestamp": "11:00:44",
-  "mode": "live"
+  "uptime_seconds": 465,
+  "timestamp": "11:19:00",
+  "mode": "live",
+  "replica_6380": "online",
+  "replica_6381": "online",
+  "replica_6382": "offline"
 }

@@ -1,13 +1,17 @@
 import socket
 import threading
 from metrics import metrics_manager
-
+from health_checker import monitor  
 import time
 from shared import db, pubsub, replication_manager
 
 HOST = "127.0.0.1"
 PORT = 6379
-
+replica_status = {
+    6380: "unknown",
+    6381: "unknown",
+    6382: "unknown"
+}
 
 
 store = db
@@ -78,8 +82,11 @@ def replicate_to_replica(command):
             replica_socket.close()
 
             online_replicas += 1
+            replica_status[port] = "online"
 
         except Exception as e:
+
+            replica_status[port] = "offline"
 
             print(
                 f"Replica {port} Error: {e}"
@@ -203,7 +210,8 @@ def handle_client(client_socket, address):
             print(f"Error: {e}")
 
             break
-    db.connected_clients -= 1
+    if db.connected_clients > 0:
+        db.connected_clients -= 1
 
     metrics_manager.update({
         "connected_clients":
@@ -218,12 +226,31 @@ def metrics_updater():
 
     while True:
 
+        metrics_manager.update({
+
+            "connected_clients":
+                db.connected_clients,
+
+            "replica_6380":
+                replica_status.get(6380),
+
+            "replica_6381":
+                replica_status.get(6381),
+
+            "replica_6382":
+                replica_status.get(6382)
+        })
+
         metrics_manager.save()
 
-        time.sleep(2)
+        time.sleep(5)
 
 threading.Thread(
     target=metrics_updater,
+    daemon=True
+).start()
+threading.Thread(
+    target=monitor,
     daemon=True
 ).start()
 
