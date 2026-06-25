@@ -5,6 +5,14 @@ from health_checker import monitor
 import time
 from shared import db, pubsub, replication_manager
 from shard_router import send_to_shard
+
+
+from shared import (
+    db,
+    pubsub,
+    replication_manager,
+    transaction_manager
+)
 HOST = "127.0.0.1"
 PORT = 6379
 replica_status = {
@@ -200,8 +208,36 @@ def handle_client(client_socket, address):
 
                     response = "AOF Rewrite Completed"
 
+
+                elif cmd == "MULTI":
+
+                    response = transaction_manager.begin()
+
+
+                elif cmd == "QUEUE":
+
+                    queued_command = " ".join(parts[1:])
+
+                    response = transaction_manager.queue(
+                        queued_command
+                    )
+
+
+                elif cmd == "EXEC":
+
+                    response = transaction_manager.execute(
+                        db
+                    )
+
+
+                elif cmd == "DISCARD":
+
+                    response = transaction_manager.discard()
+
+
                 else:
                     response = "Invalid Command"
+
 
             client_socket.send(
                 str(response).encode()

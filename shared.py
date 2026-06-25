@@ -1,6 +1,8 @@
 from datastore import DataStore
 from pubsub import PubSub
+from transaction import TransactionManager
 
+transaction_manager = TransactionManager()
 db = DataStore()
 pubsub = PubSub()
 
