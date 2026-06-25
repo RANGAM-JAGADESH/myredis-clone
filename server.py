@@ -1,7 +1,7 @@
 import socket
 import threading
 from metrics import metrics_manager
-from shared import db, pubsub
+
 import time
 from shared import db, pubsub, replication_manager
 
@@ -180,6 +180,14 @@ def handle_client(client_socket, address):
                     response = (
                         f"Message sent to {count} subscribers"
                     )
+                    
+                elif cmd == "BGREWRITEAOF":
+
+                    from aof_rewrite import rewrite_aof
+
+                    rewrite_aof(db)
+
+                    response = "AOF Rewrite Completed"
 
                 else:
                     response = "Invalid Command"

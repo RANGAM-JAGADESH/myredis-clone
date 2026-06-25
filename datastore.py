@@ -1,11 +1,17 @@
+from aof_recovery import replay_aof
 from persistence import save_data, load_data
 import time
+from aof import append_command
 import os
 from collections import OrderedDict
 from metrics import metrics_manager
+
 class DataStore:
     def __init__(self):
         self.store = OrderedDict(load_data())
+        
+
+        replay_aof(self)     
         self.expiry = {}
         self.max_keys = 3
         self.command_count = 0
@@ -45,8 +51,12 @@ class DataStore:
         self.store.move_to_end(key)
 
         self.enforce_lru()
+        
 
         save_data(dict(self.store))
+        append_command(
+            f"SET {key} {value}"
+        )
 
         
 
@@ -108,6 +118,9 @@ class DataStore:
             del self.store[key]
 
             save_data(dict(self.store))
+            append_command(
+                f"DEL {key}"
+            )
 
             metrics_manager.update({
                 "total_keys": len(self.store),
@@ -115,7 +128,7 @@ class DataStore:
             })
 
             metrics_manager.save()
-
+            
             return 1
 
         return 0
@@ -162,7 +175,9 @@ class DataStore:
             return 0
 
         self.expiry[key] = time.time() + seconds
-
+        append_command(
+            f"EXPIRE {key} {seconds}"
+        )
         return 1
     
 

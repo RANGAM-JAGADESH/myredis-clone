@@ -248,3 +248,17 @@ def restore():
     return {
         "status": "restored"
     }
+    
+    
+@app.get("/aof")
+def view_aof():
+
+    with open(
+        "appendonly.aof",
+        "r"
+    ) as f:
+
+        return {
+            "commands":
+                f.readlines()
+        }
