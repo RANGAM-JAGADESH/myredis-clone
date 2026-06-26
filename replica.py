@@ -67,6 +67,27 @@ def monitor_heartbeat():
                 f"Votes = {votes}"
             )
 
+            from raft_vote import has_majority
+
+            if has_majority(votes):
+
+                raft_state.become_leader()
+
+                from leader_election import leader_manager
+                from raft_heartbeat import start_heartbeat
+
+                leader_manager.set_leader(PORT)
+
+                print(
+                    f"Leader elected on {PORT}"
+                )
+
+                threading.Thread(
+                    target=start_heartbeat,
+                    args=(PORT,),
+                    daemon=True
+                ).start()
+
             last_heartbeat = time.time()
 
         time.sleep(1)

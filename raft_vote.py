@@ -9,6 +9,8 @@ REPLICAS = [
     6381
 ]
 
+TOTAL_NODES = 3
+
 
 def request_vote(port):
 
@@ -30,7 +32,9 @@ def request_vote(port):
             f"{raft_state.get_term()}"
         )
 
-        s.send(command.encode())
+        s.send(
+            command.encode()
+        )
 
         response = (
             s.recv(1024)
@@ -41,7 +45,11 @@ def request_vote(port):
 
         return response
 
-    except:
+    except Exception as e:
+
+        print(
+            f"Vote request failed to {port}: {e}"
+        )
 
         return "NO"
 
@@ -69,3 +77,10 @@ def collect_votes():
             votes += 1
 
     return votes
+
+
+def has_majority(votes):
+
+    return votes > (
+        TOTAL_NODES // 2
+    )

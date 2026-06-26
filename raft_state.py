@@ -39,9 +39,21 @@ class RaftState:
 
         self.role = "Leader"
 
+        self.voted_for = None
+
+        print()
+
+        print("=" * 35)
+
         print(
-            "Role -> Leader"
+            f"Term {self.current_term}"
         )
+
+        print(
+            "Role -> LEADER"
+        )
+
+        print("=" * 35)
         
     def vote(self, term):
 

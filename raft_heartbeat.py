@@ -1,11 +1,9 @@
 import socket
 import time
-from shared import leader_manager
-# from leader_election import get_leader
+
+from leader_election import leader_manager
 
 HOST = "127.0.0.1"
-
-LEADER_PORT = 6379
 
 REPLICAS = [
     6380,
@@ -37,7 +35,7 @@ def send_heartbeat(port):
         ).decode()
 
         print(
-            f"Heartbeat -> {port} : {response}"
+            f"Heartbeat -> {port}: {response}"
         )
 
         replica_socket.close()
@@ -49,14 +47,16 @@ def send_heartbeat(port):
         )
 
 
-def start_heartbeat():
+def start_heartbeat(node_port):
 
     while True:
 
-        if leader_manager.get_leader() == LEADER_PORT:
+        if leader_manager.get_leader() == node_port:
 
             for replica in REPLICAS:
 
-                send_heartbeat(replica)
+                if replica != node_port:
+
+                    send_heartbeat(replica)
 
         time.sleep(1)

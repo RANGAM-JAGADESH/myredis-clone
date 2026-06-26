@@ -23,9 +23,11 @@ class LeaderElection:
 
         with open(FILE, "r") as f:
 
-            return json.load(f)["leader"]
+            data = json.load(f)
 
-    def elect(self, port):
+        return data["leader"]
+
+    def set_leader(self, port):
 
         with open(FILE, "w") as f:
 
@@ -35,3 +37,22 @@ class LeaderElection:
                 },
                 f
             )
+
+        print()
+
+        print("=" * 35)
+
+        print(
+            f"New Leader -> {port}"
+        )
+
+        print("=" * 35)
+
+    # Backward compatibility
+    # Existing code using elect(port) will still work.
+    def elect(self, port):
+
+        self.set_leader(port)
+
+
+leader_manager = LeaderElection()

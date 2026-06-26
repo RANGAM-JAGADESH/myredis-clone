@@ -14,6 +14,7 @@ from shared import (
     watch_manager
 )
 from raft_heartbeat import start_heartbeat
+
 HOST = "127.0.0.1"
 PORT = 6379
 replica_status = {
@@ -323,11 +324,18 @@ threading.Thread(
     target=monitor_cluster,
     daemon=True
 ).start()
+
 threading.Thread(
     target=start_heartbeat,
+    args=(6379,),
     daemon=True
 ).start()
 
+threading.Thread(
+    target=start_heartbeat,
+    args=(PORT,),
+    daemon=True
+).start()
 
 while True:
 
