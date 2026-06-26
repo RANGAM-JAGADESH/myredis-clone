@@ -2,6 +2,9 @@ from datastore import DataStore
 from pubsub import PubSub
 from transaction import TransactionManager
 from watch_manager import WatchManager
+from leader_election import LeaderElection
+
+leader_manager = LeaderElection()
 transaction_manager = TransactionManager()
 
 

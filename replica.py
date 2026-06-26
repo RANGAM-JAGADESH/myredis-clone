@@ -1,8 +1,17 @@
 import socket
+import time
+import threading
 from datastore import DataStore
 from metrics import metrics_manager
+
 HOST = "127.0.0.1"
-PORT = 6380
+
+PORT = int(
+    input("Replica Port: ")
+)
+ELECTION_TIMEOUT = 5
+
+last_heartbeat = time.time()
 
 db = DataStore()
 
@@ -14,7 +23,10 @@ server = socket.socket(
 server.bind((HOST, PORT))
 server.listen()
 
-print("Replica running on port 6380")
+print(
+    f"Replica running on port {PORT}"
+)
+
 metrics_manager.update({
     "replica_status": "online",
     "master_status": "online",
@@ -22,8 +34,36 @@ metrics_manager.update({
 })
 
 metrics_manager.save()
+def monitor_heartbeat():
 
-metrics_manager.save()
+    global last_heartbeat
+
+    while True:
+
+        if (
+            time.time() - last_heartbeat
+            >
+            ELECTION_TIMEOUT
+        ):
+
+            print()
+
+            print(
+                "Leader timeout detected!"
+            )
+
+            print(
+                "Election should start..."
+            )
+
+            last_heartbeat = time.time()
+
+        time.sleep(1)
+        
+threading.Thread(
+    target=monitor_heartbeat,
+    daemon=True
+).start()
 while True:
 
     client_socket, address = server.accept()
@@ -37,11 +77,32 @@ while True:
 
         command = data.decode().strip()
 
+        if command == "HEARTBEAT":
+
+            last_heartbeat = time.time()
+
+            print(
+                f"Heartbeat received on {PORT}"
+            )
+
+            client_socket.send(
+                b"ALIVE"
+            )
+
+            continue
+
         parts = command.split()
 
-        if len(parts) == 3 and parts[0].upper() == "SET":
+        if (
+            len(parts) == 3
+            and
+            parts[0].upper() == "SET"
+        ):
 
-            db.set(parts[1], parts[2])
+            db.set(
+                parts[1],
+                parts[2]
+            )
 
             metrics_manager.update({
                 "replica_status": "online",
@@ -54,4 +115,17 @@ while True:
                 f"Replicated: {parts[1]}={parts[2]}"
             )
 
+            client_socket.send(
+                b"OK"
+            )
+
+        else:
+
+            client_socket.send(
+                b"INVALID"
+            )
+
     client_socket.close()
+    
+
+

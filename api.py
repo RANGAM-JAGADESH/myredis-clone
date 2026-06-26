@@ -6,6 +6,7 @@ from shared import db, pubsub, replication_manager
 from cluster import cluster_info
 import shutil
 from rebalancer import rebalance
+from shared import leader_manager
 class KeyValue(BaseModel):
     key: str
     value: str
@@ -278,3 +279,12 @@ def cluster_rebalance():
             db.store
         )
     }
+@app.get("/leader")
+def get_leader():
+
+    return {
+        "leader":
+        leader_manager.get_leader()
+    }
+    
+    

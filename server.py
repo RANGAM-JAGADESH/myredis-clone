@@ -5,6 +5,7 @@ from health_checker import monitor
 import time
 # from shared import db, pubsub, replication_manager
 from shard_router import send_to_shard
+from cluster_health import monitor_cluster
 from shared import (
     db,
     pubsub,
@@ -12,6 +13,7 @@ from shared import (
     transaction_manager,
     watch_manager
 )
+from raft_heartbeat import start_heartbeat
 HOST = "127.0.0.1"
 PORT = 6379
 replica_status = {
@@ -316,6 +318,16 @@ threading.Thread(
     target=monitor,
     daemon=True
 ).start()
+
+threading.Thread(
+    target=monitor_cluster,
+    daemon=True
+).start()
+threading.Thread(
+    target=start_heartbeat,
+    daemon=True
+).start()
+
 
 while True:
 
