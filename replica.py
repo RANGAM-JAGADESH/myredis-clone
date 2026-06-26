@@ -3,7 +3,7 @@ import time
 import threading
 from datastore import DataStore
 from metrics import metrics_manager
-
+from raft_state import raft_state
 HOST = "127.0.0.1"
 
 PORT = int(
@@ -52,9 +52,7 @@ def monitor_heartbeat():
                 "Leader timeout detected!"
             )
 
-            print(
-                "Election should start..."
-            )
+            raft_state.become_candidate()
 
             last_heartbeat = time.time()
 
