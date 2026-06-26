@@ -28,12 +28,28 @@ class RaftState:
             "Voted for self"
         )
 
-def get_term(self):
+    def get_term(self):
 
-    return self.current_term
+        return self.current_term
 
-def get_role(self):
+    def get_role(self):
 
-    return self.role
+        return self.role
+    def become_leader(self):
 
+        self.role = "Leader"
+
+        print(
+            "Role -> Leader"
+        )
+        
+    def vote(self, term):
+
+        if term >= self.current_term:
+
+            self.current_term = term
+
+            return "YES"
+
+        return "NO"
 raft_state = RaftState()

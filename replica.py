@@ -1,14 +1,17 @@
 import socket
-import time
 import threading
+import time
+
 from datastore import DataStore
 from metrics import metrics_manager
 from raft_state import raft_state
+from raft_vote import collect_votes
 HOST = "127.0.0.1"
 
 PORT = int(
     input("Replica Port: ")
 )
+
 ELECTION_TIMEOUT = 5
 
 last_heartbeat = time.time()
@@ -20,7 +23,10 @@ server = socket.socket(
     socket.SOCK_STREAM
 )
 
-server.bind((HOST, PORT))
+server.bind(
+    (HOST, PORT)
+)
+
 server.listen()
 
 print(
@@ -34,6 +40,8 @@ metrics_manager.update({
 })
 
 metrics_manager.save()
+
+
 def monitor_heartbeat():
 
     global last_heartbeat
@@ -42,38 +50,54 @@ def monitor_heartbeat():
 
         if (
             time.time() - last_heartbeat
-            >
+            >=
             ELECTION_TIMEOUT
         ):
 
             print()
-
             print(
                 "Leader timeout detected!"
             )
 
             raft_state.become_candidate()
 
+            votes = collect_votes()
+
+            print(
+                f"Votes = {votes}"
+            )
+
             last_heartbeat = time.time()
 
         time.sleep(1)
-        
+
+
 threading.Thread(
     target=monitor_heartbeat,
     daemon=True
 ).start()
+
+
 while True:
 
     client_socket, address = server.accept()
 
     while True:
 
-        data = client_socket.recv(1024)
+        data = client_socket.recv(
+            1024
+        )
 
         if not data:
             break
 
         command = data.decode().strip()
+
+        parts = command.split()
+
+        # ---------------------------------
+        # HEARTBEAT
+        # ---------------------------------
 
         if command == "HEARTBEAT":
 
@@ -89,7 +113,33 @@ while True:
 
             continue
 
-        parts = command.split()
+        # ---------------------------------
+        # REQUEST VOTE
+        # ---------------------------------
+
+        if (
+            len(parts) == 2
+            and
+            parts[0] == "REQUEST_VOTE"
+        ):
+
+            term = int(
+                parts[1]
+            )
+
+            response = raft_state.vote(
+                term
+            )
+
+            client_socket.send(
+                response.encode()
+            )
+
+            continue
+
+        # ---------------------------------
+        # REPLICATION
+        # ---------------------------------
 
         if (
             len(parts) == 3
@@ -124,6 +174,3 @@ while True:
             )
 
     client_socket.close()
-    
-
-
