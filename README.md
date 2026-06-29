@@ -50,7 +50,10 @@
 
 
 
-backend url = https://myredis-clone.onrender.com/
+Backend API
+https://myredis-clone.onrender.com
 
+Dashboard
+https://myredis-dashboard.onrender.com
 
 
