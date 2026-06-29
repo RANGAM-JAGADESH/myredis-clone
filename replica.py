@@ -1,7 +1,7 @@
 import socket
 import threading
 import time
-
+import random
 from datastore import DataStore
 from metrics import metrics_manager
 from raft_state import raft_state
@@ -12,9 +12,25 @@ PORT = int(
     input("Replica Port: ")
 )
 
-ELECTION_TIMEOUT = 5
-
 last_heartbeat = time.time()
+
+heartbeat_started = False
+global ELECTION_TIMEOUT
+
+
+
+ELECTION_TIMEOUT = random.randint(
+    5,
+    10
+)
+
+raft_state.set_timeout(
+    ELECTION_TIMEOUT
+)
+
+print(
+    f"Election Timeout = {ELECTION_TIMEOUT}s"
+)
 
 db = DataStore()
 
@@ -48,6 +64,13 @@ def monitor_heartbeat():
 
     while True:
 
+        # Leader never starts a new election
+        if raft_state.get_role() == "LEADER":
+
+            time.sleep(1)
+
+            continue
+
         if (
             time.time() - last_heartbeat
             >=
@@ -61,7 +84,7 @@ def monitor_heartbeat():
 
             raft_state.become_candidate()
 
-            votes = collect_votes()
+            votes = collect_votes(PORT)
 
             print(
                 f"Votes = {votes}"
@@ -73,6 +96,8 @@ def monitor_heartbeat():
 
                 raft_state.become_leader()
 
+                last_heartbeat = time.time()
+
                 from leader_election import leader_manager
                 from raft_heartbeat import start_heartbeat
 
@@ -82,11 +107,17 @@ def monitor_heartbeat():
                     f"Leader elected on {PORT}"
                 )
 
-                threading.Thread(
-                    target=start_heartbeat,
-                    args=(PORT,),
-                    daemon=True
-                ).start()
+                global heartbeat_started
+
+                if not heartbeat_started:
+
+                    heartbeat_started = True
+
+                    threading.Thread(
+                        target=start_heartbeat,
+                        args=(PORT,),
+                        daemon=True
+                    ).start()
 
             last_heartbeat = time.time()
 
@@ -103,95 +134,120 @@ while True:
 
     client_socket, address = server.accept()
 
-    while True:
+    try:
 
-        data = client_socket.recv(
-            1024
-        )
+        while True:
 
-        if not data:
-            break
+            try:
 
-        command = data.decode().strip()
+                data = client_socket.recv(1024)
 
-        parts = command.split()
+            except (
+                ConnectionResetError,
+                ConnectionAbortedError
+            ):
+                break
 
-        # ---------------------------------
-        # HEARTBEAT
-        # ---------------------------------
+            if not data:
+                break
 
-        if command == "HEARTBEAT":
+            command = data.decode().strip()
 
-            last_heartbeat = time.time()
+            parts = command.split()
 
-            print(
-                f"Heartbeat received on {PORT}"
-            )
+            # -------------------------------
+            # HEARTBEAT
+            # -------------------------------
 
-            client_socket.send(
-                b"ALIVE"
-            )
+            if parts[0] == "HEARTBEAT":
 
-            continue
+                leader_term = int(parts[1])
 
-        # ---------------------------------
-        # REQUEST VOTE
-        # ---------------------------------
+                if leader_term >= raft_state.get_term():
 
-        if (
-            len(parts) == 2
-            and
-            parts[0] == "REQUEST_VOTE"
-        ):
+                    raft_state.set_term(
+                        leader_term
+                    )
 
-            term = int(
-                parts[1]
-            )
+                    if raft_state.get_role() != "FOLLOWER":
 
-            response = raft_state.vote(
-                term
-            )
+                        raft_state.become_follower()
 
-            client_socket.send(
-                response.encode()
-            )
+                    last_heartbeat = time.time()
 
-            continue
+                    print(
+                        f"Heartbeat accepted "
+                        f"(Term {leader_term})"
+                    )
 
-        # ---------------------------------
-        # REPLICATION
-        # ---------------------------------
+                    client_socket.send(
+                        b"ALIVE"
+                    )
 
-        if (
-            len(parts) == 3
-            and
-            parts[0].upper() == "SET"
-        ):
+                else:
 
-            db.set(
-                parts[1],
-                parts[2]
-            )
+                    client_socket.send(
+                        b"STALE"
+                    )
 
-            metrics_manager.update({
-                "replica_status": "online",
-                "replication_lag_ms": 0
-            })
+                continue
 
-            metrics_manager.save()
+            # -------------------------------
+            # REQUEST_VOTE
+            # -------------------------------
 
-            print(
-                f"Replicated: {parts[1]}={parts[2]}"
-            )
+            elif (
+                len(parts) == 2
+                and
+                parts[0] == "REQUEST_VOTE"
+            ):
 
-            client_socket.send(
-                b"OK"
-            )
+                term = int(parts[1])
 
-        else:
+                response = raft_state.vote(term)
 
-            client_socket.send(
-                b"INVALID"
-            )
+                client_socket.send(
+                    response.encode()
+                )
 
-    client_socket.close()
+                continue
+
+            # -------------------------------
+            # REPLICATION
+            # -------------------------------
+
+            elif (
+                len(parts) == 3
+                and
+                parts[0].upper() == "SET"
+            ):
+
+                db.set(
+                    parts[1],
+                    parts[2]
+                )
+
+                metrics_manager.update({
+                    "replica_status": "online",
+                    "replication_lag_ms": 0
+                })
+
+                metrics_manager.save()
+
+                print(
+                    f"Replicated: {parts[1]}={parts[2]}"
+                )
+
+                client_socket.send(
+                    b"OK"
+                )
+
+            else:
+
+                client_socket.send(
+                    b"INVALID"
+                )
+
+    finally:
+
+        client_socket.close()

@@ -29,3 +29,10 @@ SET test hello
 SET test world
 SET balance 500
 SET salary 50000
+SET user jashuu
+SET user jashuu
+SET user jashuu
+SET city dmm
+DEL city
+SET test hello
+SET age 21

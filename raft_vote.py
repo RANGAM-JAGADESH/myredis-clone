@@ -54,7 +54,7 @@ def request_vote(port):
         return "NO"
 
 
-def collect_votes():
+def collect_votes(current_port):
 
     votes = 1
 
@@ -63,6 +63,11 @@ def collect_votes():
     )
 
     for replica in REPLICAS:
+
+        # Don't ask yourself for a vote
+        if replica == current_port:
+
+            continue
 
         response = request_vote(
             replica

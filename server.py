@@ -1,5 +1,5 @@
 import socket
-import threading
+
 from metrics import metrics_manager
 from health_checker import monitor  
 import time
@@ -13,7 +13,10 @@ from shared import (
     transaction_manager,
     watch_manager
 )
+from leader_election import leader_manager
+from raft_state import raft_state
 from raft_heartbeat import start_heartbeat
+import threading
 
 HOST = "127.0.0.1"
 PORT = 6379
@@ -37,6 +40,15 @@ server.bind((HOST, PORT))
 server.listen()
 
 print(f"MyRedis Server running on {HOST}:{PORT}")
+leader_manager.set_leader(6379)
+
+leader_manager.set_leader(PORT)
+
+raft_state.become_leader()
+
+print("Server is Initial Leader")
+
+print("Server is Initial Leader")
 
 # def replicate_to_replica(command):
 
@@ -65,10 +77,9 @@ print(f"MyRedis Server running on {HOST}:{PORT}")
 def replicate_to_replica(command):
 
     replicas = [
-        6380,
-        6381,
-        6382
-    ]
+6380,
+6381
+]
 
     online_replicas = 0
 
@@ -146,11 +157,22 @@ def handle_client(client_socket, address):
                         parts[1]
                     )
 
-                    replicate_to_replica(command)
+                    if response == "OK":
 
-                    watch_manager.touch(
-                        parts[1]
-                    )
+                        replicate_to_replica(
+                            command
+                        )
+
+                        watch_manager.touch(
+                            parts[1]
+                        )
+
+                    else:
+
+                        print(
+                            "SET failed on shard. "
+                            "Replication skipped."
+                        )
 
                 elif cmd == "GET" and len(parts) == 2:
 
@@ -331,11 +353,32 @@ threading.Thread(
     daemon=True
 ).start()
 
-threading.Thread(
-    target=start_heartbeat,
-    args=(PORT,),
-    daemon=True
-).start()
+
+
+
+
+# while True:
+
+#     client_socket, address = server.accept()
+
+#     db.connected_clients += 1
+
+#     metrics_manager.update({
+#         "connected_clients":
+#             db.connected_clients
+#     })
+
+#     metrics_manager.save()
+
+#     print(f"Connected: {address}")
+
+#     thread = threading.Thread(
+#         target=handle_client,
+#         args=(client_socket, address)
+#     )
+
+#     thread.start()
+
 
 while True:
 
@@ -349,8 +392,6 @@ while True:
     })
 
     metrics_manager.save()
-
-    print(f"Connected: {address}")
 
     thread = threading.Thread(
         target=handle_client,

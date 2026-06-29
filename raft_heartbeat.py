@@ -2,6 +2,7 @@ import socket
 import time
 
 from leader_election import leader_manager
+from raft_state import raft_state
 
 HOST = "127.0.0.1"
 
@@ -26,8 +27,13 @@ def send_heartbeat(port):
             (HOST, port)
         )
 
+        command = (
+            f"HEARTBEAT "
+            f"{raft_state.get_term()}"
+        )
+
         replica_socket.send(
-            b"HEARTBEAT"
+            command.encode()
         )
 
         response = replica_socket.recv(
@@ -48,8 +54,13 @@ def send_heartbeat(port):
 
 
 def start_heartbeat(node_port):
-
     while True:
+
+        if raft_state.get_role() != "LEADER":
+
+            time.sleep(1)
+
+            continue
 
         if leader_manager.get_leader() == node_port:
 
@@ -60,3 +71,4 @@ def start_heartbeat(node_port):
                     send_heartbeat(replica)
 
         time.sleep(1)
+
