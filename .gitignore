@@ -1,5 +1,16 @@
 __pycache__/
 *.pyc
+
 metrics.json
+leader_state.json
+backup_dump.json
 dump.json
 
+.vscode/
+.idea/
+
+.git/
+
+.env
+
+*.log
